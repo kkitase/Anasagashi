@@ -1,6 +1,6 @@
 
 export enum ProfessorType {
-  NECHINECHI = 'ねちねち型 (執拗な粗探し)',
+  NECHONECHO = 'ねちょねちょ型 (粘着質な粗探し)',
   STATISTICS = '統計命型 (データ・検定重視)',
   PASSIONATE = '情熱的鬼教授 (本質と社会意義重視)',
   THEORETICAL = '理論ガチ勢 (モデルと定義重視)'
