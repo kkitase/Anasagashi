@@ -8,16 +8,15 @@ export enum ProfessorType {
 
 export interface FeedbackPoint {
   id: string;
-  slideIndex: number;
   title: string;
   comment: string;
+  originalText: string;
+  suggestion: string;
   holeType: string;
-  coordinates?: { x: number; y: number; w: number; h: number };
 }
 
-export interface ResearchSession {
-  slides: string[]; // base64 images
-  transcript?: string;
+export interface ReportSession {
+  reportText: string;
   professorType: ProfessorType;
   feedbacks: FeedbackPoint[];
 }
