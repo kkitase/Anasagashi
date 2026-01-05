@@ -1,31 +1,28 @@
-
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { ProfessorType, FeedbackPoint, Message } from './types';
 import { PROFESSOR_CONFIGS } from './constants';
 import { gemini } from './services/geminiService';
-import { FileUploader } from './components/FileUploader';
-import { VoiceRecorder } from './components/VoiceRecorder';
+import { ReportInput } from './components/ReportInput';
 import { ProfessorSelection } from './components/ProfessorSelection';
 import { FeedbackDisplay } from './components/FeedbackDisplay';
 
 const App: React.FC = () => {
   const [step, setStep] = useState<'setup' | 'analyzing' | 'result'>('setup');
   const [professorType, setProfessorType] = useState<ProfessorType>(ProfessorType.NECHONECHO);
-  const [slides, setSlides] = useState<string[]>([]);
-  const [transcript, setTranscript] = useState<string>('');
+  const [reportText, setReportText] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackPoint[]>([]);
-  const [loadingMsg, setLoadingMsg] = useState('資料を精読中...');
+  const [loadingMsg, setLoadingMsg] = useState('レポートを精読中...');
 
   const handleStartAnalysis = async () => {
-    if (slides.length === 0) {
-      alert("スライドを提出してください。");
+    if (!reportText.trim()) {
+      alert("レポートの文章を入力してください。");
       return;
     }
     setStep('analyzing');
     try {
       setLoadingMsg('教授が眼鏡をクイッと上げています...');
-      const { text, feedbacks: points } = await gemini.analyzeResearch(slides, transcript, professorType);
+      const { text, feedbacks: points } = await gemini.analyzeReport(reportText, professorType);
 
       setLoadingMsg('声を整えています...');
       const audio = await gemini.generateProfessorVoice(text, professorType);
@@ -33,9 +30,13 @@ const App: React.FC = () => {
       setFeedbacks(points);
       setMessages([{ role: 'professor', text, audio }]);
       setStep('result');
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      alert("教授の機嫌を損ねたようです。もう一度試してください。");
+      if (error.message?.includes("API key")) {
+        alert("APIキーが設定されていません。.env ファイルに GEMINI_API_KEY を設定してください。");
+      } else {
+        alert("教授の機嫌を損ねたようです。もう一度試してください。");
+      }
       setStep('setup');
     }
   };
@@ -64,7 +65,7 @@ const App: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold tracking-tighter">穴探し <span className="text-slate-500 font-normal text-sm ml-2">- 論文クラッシャー -</span></h1>
+            <h1 className="text-2xl font-bold tracking-tighter">穴探し <span className="text-slate-500 font-normal text-sm ml-2">- レポートクラッシャー -</span></h1>
           </div>
           {step !== 'setup' && (
             <button
@@ -81,40 +82,30 @@ const App: React.FC = () => {
 
       <main className="flex-1 overflow-auto">
         {step === 'setup' && (
-          <div className="max-w-4xl mx-auto p-8 space-y-12">
+          <div className="max-w-5xl mx-auto p-8 space-y-12">
             <section className="text-center space-y-4">
-              <h2 className="text-4xl font-extrabold text-white">その研究、穴だらけですよ？</h2>
-              <p className="text-slate-400 text-lg">スライドをアップロードし、発表を録音してください。現役教授並みの鋭さで批評します。</p>
+              <h2 className="text-4xl font-extrabold text-white">そのレポート、穴だらけですよ？</h2>
+              <p className="text-slate-400 text-lg">レポートの文章を貼り付けてください。理系論文の作法に基づき、現役教授並みの鋭さで添削します。</p>
             </section>
 
-            <div className="grid md:grid-cols-2 gap-8">
-              <div className="space-y-6">
+            <div className="grid lg:grid-cols-3 gap-8 h-[500px]">
+              <div className="lg:col-span-1 space-y-6">
                 <ProfessorSelection selected={professorType} onSelect={setProfessorType} />
-                <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg">
-                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-red-500 rounded"></span>
-                    プレゼン音声録音 (任意)
-                  </h3>
-                  <VoiceRecorder onTranscriptChange={setTranscript} />
-                </div>
+                <button
+                  onClick={handleStartAnalysis}
+                  className="w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!reportText.trim()}
+                >
+                  添削を開始する
+                </button>
               </div>
 
-              <div className="space-y-6">
-                <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg h-full flex flex-col">
-                  <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-                    <span className="w-1 h-6 bg-blue-500 rounded"></span>
-                    研究スライド (PDF)
-                  </h3>
-                  <FileUploader onSlidesLoaded={setSlides} />
-
-                  <button
-                    onClick={handleStartAnalysis}
-                    className="mt-6 w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                    disabled={slides.length === 0}
-                  >
-                    批評を開始する
-                  </button>
-                </div>
+              <div className="lg:col-span-2 bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg flex flex-col">
+                <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
+                  <span className="w-1 h-6 bg-blue-500 rounded"></span>
+                  レポート本文
+                </h3>
+                <ReportInput onTextChange={setReportText} initialText={reportText} />
               </div>
             </div>
           </div>
@@ -137,7 +128,7 @@ const App: React.FC = () => {
 
         {step === 'result' && (
           <FeedbackDisplay
-            slides={slides}
+            reportText={reportText}
             feedbacks={feedbacks}
             messages={messages}
             professorType={professorType}
