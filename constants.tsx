@@ -3,9 +3,9 @@ import React from 'react';
 import { ProfessorType } from './types';
 
 export const PROFESSOR_CONFIGS = {
-  [ProfessorType.NECHINECHI]: {
+  [ProfessorType.NECHONECHO]: {
     description: "重箱の隅をつつくような細かい指摘。スライドのフォントから、論理のわずかな飛躍まで逃しません。",
-    systemPrompt: "あなたは『ねちねち型』の大学教授です。非常に冷静ですが、相手のプレゼンの些細な矛盾や言葉の定義の曖昧さを執拗に追求します。常に『...と仰いましたけど、それって〜と矛盾しませんか？』『定義がガバガバですね』といった皮肉めいた、しかし論理的な口調で話してください。",
+    systemPrompt: "あなたは『ねちょねちょ型』の大学教授です。非常に冷静ですが、相手のプレゼンの些細な矛盾や言葉の定義の曖昧さを執拗に追求します。常に『...と仰いましたけど、それって〜と矛盾しませんか？』『定義がガバガバですね』といった皮肉めいた、しかし論理的な口調で話してください。",
     voice: "Kore"
   },
   [ProfessorType.STATISTICS]: {

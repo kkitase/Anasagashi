@@ -10,7 +10,7 @@ import { FeedbackDisplay } from './components/FeedbackDisplay';
 
 const App: React.FC = () => {
   const [step, setStep] = useState<'setup' | 'analyzing' | 'result'>('setup');
-  const [professorType, setProfessorType] = useState<ProfessorType>(ProfessorType.NECHINECHI);
+  const [professorType, setProfessorType] = useState<ProfessorType>(ProfessorType.NECHONECHO);
   const [slides, setSlides] = useState<string[]>([]);
   const [transcript, setTranscript] = useState<string>('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -26,10 +26,10 @@ const App: React.FC = () => {
     try {
       setLoadingMsg('教授が眼鏡をクイッと上げています...');
       const { text, feedbacks: points } = await gemini.analyzeResearch(slides, transcript, professorType);
-      
+
       setLoadingMsg('声を整えています...');
       const audio = await gemini.generateProfessorVoice(text, professorType);
-      
+
       setFeedbacks(points);
       setMessages([{ role: 'professor', text, audio }]);
       setStep('result');
@@ -43,7 +43,7 @@ const App: React.FC = () => {
   const handleCounterArgument = async (text: string) => {
     const newMessage: Message = { role: 'user', text };
     setMessages(prev => [...prev, newMessage]);
-    
+
     try {
       const history = messages.map(m => ({ role: m.role, text: m.text }));
       const response = await gemini.getCounterResponse(history, text, professorType);
@@ -67,9 +67,9 @@ const App: React.FC = () => {
             <h1 className="text-2xl font-bold tracking-tighter">穴探し <span className="text-slate-500 font-normal text-sm ml-2">- 論文クラッシャー -</span></h1>
           </div>
           {step !== 'setup' && (
-            <button 
+            <button
               onClick={() => {
-                if(confirm("分析結果が消えますがよろしいですか？")) setStep('setup');
+                if (confirm("分析結果が消えますがよろしいですか？")) setStep('setup');
               }}
               className="text-sm text-slate-400 hover:text-white transition-colors"
             >
@@ -106,7 +106,7 @@ const App: React.FC = () => {
                     研究スライド (PDF)
                   </h3>
                   <FileUploader onSlidesLoaded={setSlides} />
-                  
+
                   <button
                     onClick={handleStartAnalysis}
                     className="mt-6 w-full py-4 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-red-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -136,10 +136,10 @@ const App: React.FC = () => {
         )}
 
         {step === 'result' && (
-          <FeedbackDisplay 
-            slides={slides} 
-            feedbacks={feedbacks} 
-            messages={messages} 
+          <FeedbackDisplay
+            slides={slides}
+            feedbacks={feedbacks}
+            messages={messages}
             professorType={professorType}
             onCounter={handleCounterArgument}
           />
