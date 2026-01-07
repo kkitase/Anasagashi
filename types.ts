@@ -12,14 +12,8 @@ export interface FeedbackPoint {
   title: string;
   comment: string;
   holeType: string;
+  audio?: string; // base64
   coordinates?: { x: number; y: number; w: number; h: number };
-}
-
-export interface ResearchSession {
-  slides: string[]; // base64 images
-  transcript?: string;
-  professorType: ProfessorType;
-  feedbacks: FeedbackPoint[];
 }
 
 export interface Message {

@@ -4,7 +4,7 @@ import { ProfessorType, FeedbackPoint, Message } from './types';
 import { PROFESSOR_CONFIGS } from './constants';
 import { gemini } from './services/geminiService';
 import { FileUploader } from './components/FileUploader';
-import { VoiceRecorder } from './components/VoiceRecorder';
+import { AudioUploader } from './components/AudioUploader';
 import { ProfessorSelection } from './components/ProfessorSelection';
 import { FeedbackDisplay } from './components/FeedbackDisplay';
 
@@ -12,16 +12,16 @@ const App: React.FC = () => {
   const [step, setStep] = useState<'setup' | 'analyzing' | 'result'>('setup');
   const [professorType, setProfessorType] = useState<ProfessorType>(ProfessorType.NECHINECHI);
   const [slides, setSlides] = useState<string[]>([]);
-  const [transcript, setTranscript] = useState<string>('');
+  const [audioFile, setAudioFile] = useState<{data: string, mimeType: string} | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [feedbacks, setFeedbacks] = useState<FeedbackPoint[]>([]);
   const [loadingMsg, setLoadingMsg] = useState('資料を精読中...');
 
   const resetApp = () => {
-    if (confirm("分析結果とアップロードしたスライドが消えますがよろしいですか？")) {
+    if (confirm("分析結果とアップロードしたデータが消えますがよろしいですか？")) {
       setStep('setup');
       setSlides([]);
-      setTranscript('');
+      setAudioFile(null);
       setMessages([]);
       setFeedbacks([]);
     }
@@ -34,8 +34,14 @@ const App: React.FC = () => {
     }
     setStep('analyzing');
     try {
+      let transcript = "";
+      if (audioFile) {
+        setLoadingMsg('発表音声を文字起こし中...');
+        transcript = await gemini.transcribeAudio(audioFile.data, audioFile.mimeType);
+      }
+
       setLoadingMsg('教授が眼鏡をクイッと上げています...');
-      const { text, feedbacks: points } = await gemini.analyzeResearch(slides, transcript, professorType);
+      const { text, feedbacks: points } = await gemini.analyzeResearch(slides, transcript || undefined, professorType);
       
       setLoadingMsg('声を整えています...');
       const audio = await gemini.generateProfessorVoice(text, professorType);
@@ -92,7 +98,7 @@ const App: React.FC = () => {
           <div className="max-w-4xl mx-auto p-8 space-y-12">
             <section className="text-center space-y-4">
               <h2 className="text-4xl font-extrabold text-white">その研究、穴だらけですよ？</h2>
-              <p className="text-slate-400 text-lg">スライドをアップロードし、発表を録音してください。現役教授並みの鋭さで批評します。</p>
+              <p className="text-slate-400 text-lg">スライドと音声をアップロードしてください。現役教授並みの鋭さで批評します。</p>
             </section>
 
             <div className="grid md:grid-cols-2 gap-8">
@@ -101,9 +107,12 @@ const App: React.FC = () => {
                 <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 shadow-lg">
                   <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
                     <span className="w-1 h-6 bg-red-500 rounded"></span>
-                    プレゼン音声録音 (任意)
+                    プレゼン音声提出 (任意)
                   </h3>
-                  <VoiceRecorder onTranscriptChange={setTranscript} />
+                  <AudioUploader 
+                    onAudioUploaded={(data, mimeType) => setAudioFile({data, mimeType})} 
+                    onClear={() => setAudioFile(null)}
+                  />
                 </div>
               </div>
 

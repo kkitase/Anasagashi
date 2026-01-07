@@ -10,6 +10,24 @@ export class GeminiService {
     this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   }
 
+  async transcribeAudio(base64: string, mimeType: string): Promise<string> {
+    const response = await this.ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        {
+          inlineData: {
+            data: base64,
+            mimeType: mimeType
+          }
+        },
+        {
+          text: "この音声ファイルを正確に文字起こししてください。プレゼンの内容がわかるように出力してください。"
+        }
+      ]
+    });
+    return response.text || "";
+  }
+
   async analyzeResearch(
     images: string[],
     transcript: string | undefined,
@@ -23,8 +41,11 @@ export class GeminiService {
         
         【プレゼン書き起こし】: ${transcript || "なし"}
         
-        大学教授の視点で、この研究の「穴（論理の飛躍、データの不備、前提の誤りなど）」を3〜5点、鋭く指摘してください。
-        また、それぞれの指摘がスライドのどのあたり（座標は概算で良い）に関連するかをJSON形式で出力してください。
+        大学教授の視点で、この研究の「穴」を3〜5点、鋭く指摘してください。
+        
+        【重要：スライド番号の指定ルール】
+        各指摘がどのスライドに関するものか、必ず「slideIndex」で指定してください。
+        1枚目のスライドなら slideIndex: 0、2枚目なら slideIndex: 1 としてください。絶対に間違えないでください。
         
         口調は以下の設定を厳守してください:
         ${config.systemPrompt}`
@@ -39,31 +60,31 @@ export class GeminiService {
 
     const response = await this.ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: { parts: contents },
+      contents: { parts: contents as any },
       config: {
         thinkingConfig: { thinkingBudget: 2000 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            overallComment: { type: Type.STRING, description: "教授からの総評。淡々と厳しい口調で。" },
+            overallComment: { type: Type.STRING, description: "教授からの総評。威厳を持って。簡潔に。" },
             feedbacks: {
               type: Type.ARRAY,
               items: {
                 type: Type.OBJECT,
                 properties: {
                   id: { type: Type.STRING },
-                  slideIndex: { type: Type.INTEGER, description: "0-indexed slide index" },
-                  title: { type: Type.STRING, description: "指摘の短いタイトル" },
-                  comment: { type: Type.STRING, description: "具体的な指摘内容" },
-                  holeType: { type: Type.STRING, description: "論理の飛躍、統計的不備など" },
+                  slideIndex: { type: Type.INTEGER, description: "指摘対象のスライド番号。0から始まる数値。" },
+                  title: { type: Type.STRING },
+                  comment: { type: Type.STRING },
+                  holeType: { type: Type.STRING },
                   coordinates: {
                     type: Type.OBJECT,
                     properties: {
-                      x: { type: Type.NUMBER, description: "左上X (0-100)" },
-                      y: { type: Type.NUMBER, description: "左上Y (0-100)" },
-                      w: { type: Type.NUMBER, description: "幅 (0-100)" },
-                      h: { type: Type.NUMBER, description: "高さ (0-100)" }
+                      x: { type: Type.NUMBER },
+                      y: { type: Type.NUMBER },
+                      w: { type: Type.NUMBER },
+                      h: { type: Type.NUMBER }
                     }
                   }
                 },
@@ -77,9 +98,16 @@ export class GeminiService {
     });
 
     const result = JSON.parse(response.text || "{}");
+    
+    // 各指摘事項にボイスを付ける
+    const feedbacksWithVoice = await Promise.all(result.feedbacks.map(async (fb: any) => {
+      const audio = await this.generateProfessorVoice(fb.comment, profType);
+      return { ...fb, audio };
+    }));
+
     return {
       text: result.overallComment,
-      feedbacks: result.feedbacks
+      feedbacks: feedbacksWithVoice
     };
   }
 
@@ -87,7 +115,7 @@ export class GeminiService {
     const config = PROFESSOR_CONFIGS[profType];
     const response = await this.ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `落ち着いたトーンで、少し厳しめに話してください：${text}` }] }],
+      contents: [{ parts: [{ text: `極めて威厳があり、学生が恐怖を感じるような冷徹で低い声で話してください：${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -110,17 +138,8 @@ export class GeminiService {
   ): Promise<{ text: string; audio: string }> {
     const config = PROFESSOR_CONFIGS[profType];
     const prompt = `
-      これまでの議論の流れ:
-      ${history.map(m => `${m.role}: ${m.text}`).join('\n')}
-      
       学生からの反論: "${userMessage}"
-      
-      教授として、この反論を論破するか、一理ある場合は嫌味ったらしく認めつつ別の穴を指摘してください。
-      
-      【重要】
-      ・返答は100文字以内で、極めて簡潔に行ってください。冗長な解説は不要です。
-      ・鋭く、一言で学生を黙らせるようなキレのある言葉を選んでください。
-      
+      返答は100文字以内で、威厳を持って学生を黙らせてください。
       設定: ${config.systemPrompt}
     `;
 
