@@ -36,7 +36,7 @@ const App: React.FC = () => {
     try {
       let transcript = "";
       if (audioFile) {
-        setLoadingMsg('発表音声を文字起こし中...');
+        setLoadingMsg('発表音声を文字起こし・分析中...');
         transcript = await gemini.transcribeAudio(audioFile.data, audioFile.mimeType);
       }
 
@@ -80,7 +80,7 @@ const App: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold tracking-tighter">穴探し <span className="text-slate-500 font-normal text-sm ml-2">- 論文クラッシャー -</span></h1>
+            <h1 className="text-2xl font-bold tracking-tighter">Anasagashi <span className="text-slate-500 font-normal text-sm ml-2">- 論文クラッシャー -</span></h1>
           </div>
           {(step !== 'setup' || slides.length > 0) && (
             <button 
@@ -164,7 +164,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="p-4 text-center text-slate-600 text-xs border-t border-slate-800">
-        &copy; 2024 穴探し - 完璧な論理を目指す研究者のためのアプリ
+        &copy; 2024 Anasagashi - 完璧な論理を目指す研究者のためのアプリ
       </footer>
     </div>
   );

@@ -39,13 +39,17 @@ export class GeminiService {
       {
         text: `以下の研究進捗スライド（画像）と、プレゼンの書き起こし（もしあれば）を分析してください。
         
+        【重要：発表態度の批評】
+        もし「プレゼン書き起こし」が存在する場合、スライドの内容だけでなく、話し方、口癖（えー、あのー等）、声のトーン、説明の構成といった「発表態度」についても厳しく批評に含めてください。
+        
         【プレゼン書き起こし】: ${transcript || "なし"}
         
-        大学教授の視点で、この研究の「穴」を3〜5点、鋭く指摘してください。
+        大学教授の視点で、この研究の「穴」および「発表の未熟な点」を3〜5点、鋭く指摘してください。
         
         【重要：スライド番号の指定ルール】
         各指摘がどのスライドに関するものか、必ず「slideIndex」で指定してください。
-        1枚目のスライドなら slideIndex: 0、2枚目なら slideIndex: 1 としてください。絶対に間違えないでください。
+        1枚目のスライドなら slideIndex: 0、2枚目なら slideIndex: 1 としてください。
+        話し方そのものへの指摘（スライドに依存しないもの）は、最も関連の深いスライド、あるいは0枚目に紐づけてください。
         
         口調は以下の設定を厳守してください:
         ${config.systemPrompt}`
@@ -67,7 +71,7 @@ export class GeminiService {
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            overallComment: { type: Type.STRING, description: "教授からの総評。威厳を持って。簡潔に。" },
+            overallComment: { type: Type.STRING, description: "教授からの総評。スライドの内容と発表態度の両方に触れつつ、威厳を持って。簡潔に。" },
             feedbacks: {
               type: Type.ARRAY,
               items: {
@@ -77,7 +81,7 @@ export class GeminiService {
                   slideIndex: { type: Type.INTEGER, description: "指摘対象のスライド番号。0から始まる数値。" },
                   title: { type: Type.STRING },
                   comment: { type: Type.STRING },
-                  holeType: { type: Type.STRING },
+                  holeType: { type: Type.STRING, description: "論理の飛躍、データの不備、話し方の未熟さ、等" },
                   coordinates: {
                     type: Type.OBJECT,
                     properties: {
