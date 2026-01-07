@@ -7,33 +7,39 @@ export class GeminiService {
   private ai: GoogleGenAI;
 
   constructor() {
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || "";
-    if (!apiKey) {
-      console.error("Gemini API key is missing. Please set GEMINI_API_KEY in your .env file.");
-    }
-    this.ai = new GoogleGenAI({ apiKey });
+    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   }
 
-  async analyzeReport(
-    reportText: string,
+  async analyzeResearch(
+    images: string[],
+    transcript: string | undefined,
     profType: ProfessorType
   ): Promise<{ text: string; feedbacks: FeedbackPoint[] }> {
     const config = PROFESSOR_CONFIGS[profType];
-
-    const prompt = `以下のレポートの文章を分析し、理系論文の作法や論理構成の観点から添削してください。
     
-    【レポート内容】:
-    ${reportText}
-    
-    大学教授の視点で、このレポートの「穴（論理の飛躍、不適切な表現、表記ゆれ、根拠の欠如など）」を3〜5点、鋭く指摘してください。
-    それぞれの指摘について、「どこの文章が（originalText）」「どのように修正すべきか（suggestion）」を含めてJSON形式で出力してください。
-    
-    口調は以下の設定を厳守してください:
-    ${config.systemPrompt}`;
+    const contents = [
+      {
+        text: `以下の研究進捗スライド（画像）と、プレゼンの書き起こし（もしあれば）を分析してください。
+        
+        【プレゼン書き起こし】: ${transcript || "なし"}
+        
+        大学教授の視点で、この研究の「穴（論理の飛躍、データの不備、前提の誤りなど）」を3〜5点、鋭く指摘してください。
+        また、それぞれの指摘がスライドのどのあたり（座標は概算で良い）に関連するかをJSON形式で出力してください。
+        
+        口調は以下の設定を厳守してください:
+        ${config.systemPrompt}`
+      },
+      ...images.map(img => ({
+        inlineData: {
+          mimeType: "image/png",
+          data: img.split(',')[1] || img
+        }
+      }))
+    ];
 
     const response = await this.ai.models.generateContent({
       model: "gemini-3-pro-preview",
-      contents: { parts: [{ text: prompt }] },
+      contents: { parts: contents },
       config: {
         thinkingConfig: { thinkingBudget: 2000 },
         responseMimeType: "application/json",
@@ -47,13 +53,21 @@ export class GeminiService {
                 type: Type.OBJECT,
                 properties: {
                   id: { type: Type.STRING },
+                  slideIndex: { type: Type.INTEGER, description: "0-indexed slide index" },
                   title: { type: Type.STRING, description: "指摘の短いタイトル" },
-                  comment: { type: Type.STRING, description: "具体的な指摘理由と内容" },
-                  originalText: { type: Type.STRING, description: "レポート内の問題のある箇所の抜粋（一字一句違わず抜き出すこと）" },
-                  suggestion: { type: Type.STRING, description: "修正後の具体的な推奨案" },
-                  holeType: { type: Type.STRING, description: "論理の飛躍、不適切な語彙、表記ゆれなど" }
+                  comment: { type: Type.STRING, description: "具体的な指摘内容" },
+                  holeType: { type: Type.STRING, description: "論理の飛躍、統計的不備など" },
+                  coordinates: {
+                    type: Type.OBJECT,
+                    properties: {
+                      x: { type: Type.NUMBER, description: "左上X (0-100)" },
+                      y: { type: Type.NUMBER, description: "左上Y (0-100)" },
+                      w: { type: Type.NUMBER, description: "幅 (0-100)" },
+                      h: { type: Type.NUMBER, description: "高さ (0-100)" }
+                    }
+                  }
                 },
-                required: ["id", "title", "comment", "originalText", "suggestion"]
+                required: ["id", "slideIndex", "title", "comment"]
               }
             }
           },
@@ -101,8 +115,11 @@ export class GeminiService {
       
       学生からの反論: "${userMessage}"
       
-      教授として、この反論をさらに論破するか、一理ある場合は嫌味ったらしく認めつつ別の穴を指摘してください。
-      絶対に優しくなりすぎないでください。
+      教授として、この反論を論破するか、一理ある場合は嫌味ったらしく認めつつ別の穴を指摘してください。
+      
+      【重要】
+      ・返答は100文字以内で、極めて簡潔に行ってください。冗長な解説は不要です。
+      ・鋭く、一言で学生を黙らせるようなキレのある言葉を選んでください。
       
       設定: ${config.systemPrompt}
     `;
